@@ -1,0 +1,8 @@
+<resources>
+
+    <!-- Основная тема приложения -->
+    <style name="Theme.Test" parent="Theme.AppCompat.DayNight">
+
+    </style>
+
+</resources>
