@@ -1,12 +1,15 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from jsonschema import validate, ValidationError
 import random
 import threading
 import time
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import logging
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Инициализация Flask-Limiter
 limiter = Limiter(
@@ -14,6 +17,10 @@ limiter = Limiter(
     app=app,
     default_limits=["100 per hour"]  # Лимит запросов по умолчанию (100 запросов в час)
 )
+
+# Настройка логгирования
+logging.basicConfig(level = logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Начальная температура
 current_temperature = 25
