@@ -1,0 +1,4 @@
+Flask==2.3.3
+jsonschema==4.19.1
+Flask-Limiter==3.3.3
+Flask-CORS==4.0.0
