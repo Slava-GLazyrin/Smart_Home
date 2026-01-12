@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 current_temperature = 25
 target_temperature = 25
 air_conditioner_on = False  # Состояние кондиционера
+temperature_lock = threading.Lock() # Блокировка для температуры
+ac_lock = threading.Lock() # Блокировка для состояния кондиционера
 
 # JSON Schema для валидации
 target_temperature_schema = {
@@ -54,17 +56,21 @@ air_conditioner_schema = {
 
 def update_temperature():
     """Фоновое обновление температуры."""
-    global current_temperature
+    global current_temperature, target_temperature, air_conditioner_on
     while True:
-        if air_conditioner_on:
-            if current_temperature < target_temperature:
-                current_temperature += 1
-            elif current_temperature > target_temperature:
-                current_temperature -= 1
-        else:
-            current_temperature += random.randint(-1, 1)
+        with True:
+            if air_conditioner_on:
+                if current_temperature < target_temperature:
+                    current_temperature += 1
+                elif current_temperature > target_temperature:
+                    current_temperature -= 1
+            else:
+                current_temperature += random.randint(-1, 1)
+            
+            # Ограничение диапазона
+            current_temperature = max(16, min(40, current_temperature))
 
-        print(f"Updated temperature: {current_temperature}")
+        logger.info(f"Обновленная температура: {current_temperature}°C (Целевая температура: {target_temperature}°C Кондиционер: {'ВКЛ' if air_conditioner_on else 'ВЫКЛ'})")
         time.sleep(5)
 
 @app.before_request
@@ -90,10 +96,14 @@ def set_target_temperature():
     try:
         validate(instance=data, schema=target_temperature_schema)
     except ValidationError as e:
+        logger.error(f"Validation error: {e.message}")
         return jsonify({"error": f"Invalid input: {e.message}"}), 400
 
-    target_temperature = data["target_temperature"]
-    return jsonify({"status": "success", "target_temperature": target_temperature})
+    with temperature_lock:
+        target_temperature = data["target_tamperture"]
+
+    logger.info(f"Target temperature set to: {target_temperature}°C")
+    return jsonify({"status": "success", "target_temperature": target_temperature, "message": f"Target temperature set to {target_temperature}°C"})
 
 @app.route('/air_conditioner', methods=['POST'])
 @limiter.limit("5 per minute")
@@ -105,11 +115,15 @@ def toggle_air_conditioner():
     try:
         validate(instance=data, schema=air_conditioner_schema)
     except ValidationError as e:
+        logger.error(f"Validation error: {e.message}")
         return jsonify({"error": f"Invalid input: {e.message}"}), 400
-
-    air_conditioner_on = data["state"]
+    
+    with ac_lock:
+        air_conditioner_on = data["state"]
+    
     status = "on" if air_conditioner_on else "off"
-    return jsonify({"status": "success", "air_conditioner": status})
+    logger.info(f"Air conditioner turned {status}")
+    return jsonify({"status": "success", "air_conditioner": status, "message": f"Air conditioner turned {status}"})
 
 @app.route('/')
 @limiter.exempt
