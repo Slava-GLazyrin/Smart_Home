@@ -25,6 +25,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class MainActivity extends AppCompatActivity {
 
     private TextView textTemperature;
+    private ProgressBar progressBar;
+    private boolean isLoading = false;
     private EditText editTemperature;
     private Button buttonAirConditioner;
     private Button buttonUpdate;
@@ -37,6 +39,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        progressBar = findViewById(R.id.progressBar);
 
         textTemperature = findViewById(R.id.text_temperature);
         editTemperature = findViewById(R.id.edit_temperature);
@@ -58,6 +62,17 @@ public class MainActivity extends AppCompatActivity {
                 fetchTemperature();
             }
         });
+
+        private void showLoading(boolean show) {
+        isLoading = show;
+        progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
+        
+        // Блокируем кнопки во время загрузки
+        btnRefresh.setEnabled(!show);
+        btnSetTemp.setEnabled(!show);
+        switchAC.setEnabled(!show);
+        sbTargetTemp.setEnabled(!show);
+        }
 
         // Обработчик нажатия на кнопку кондиционера
         buttonAirConditioner.setOnClickListener(new View.OnClickListener() {
@@ -134,6 +149,42 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+    private void fetchCurrentTemperature() {
+        if (!isNetworkAvailable()) {
+            showError("No internet connection");
+            return;
+        }
+        
+        if (isLoading) {
+            return; // Уже загружается
+        }
+        
+        showLoading(true);
+        showStatus("Fetching temperature...");
+        
+        Call<TemperatureResponse> call = TemperatureService.getApiService().getCurrentTemperature();
+        call.enqueue(new Callback<TemperatureResponse>() {
+            @Override
+            public void onResponse(Call<TemperatureResponse> call, Response<TemperatureResponse> response) {
+                showLoading(false);
+                // ... обработка ответа ...
+            }
+            
+            @Override
+            public void onFailure(Call<TemperatureResponse> call, Throwable t) {
+                showLoading(false);
+                showError("Network error: " + t.getMessage());
+            }
+        });
+    }
+    
+    private void showError(String error) {
+        showLoading(false);
+        tvStatus.setText("Error: " + error);
+        Toast.makeText(this, error, Toast.LENGTH_SHORT).show();
+    }
+}
 
     // Метод для установки желаемой температуры на сервере
     private void setTargetTemperature(int targetTemperature) {
