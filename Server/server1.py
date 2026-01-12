@@ -77,14 +77,39 @@ def update_temperature():
 def limit_request_size():
     """Ограничивает размер тела запроса."""
     MAX_REQUEST_SIZE = 1024 * 1024  # 1 MB
-    if request.content_length and request.content_length > MAX_REQUEST_SIZE:
-        return jsonify({"error": f"Размер запроса превышает допустимый предел: {MAX_REQUEST_SIZE} байт"}), 413
+
+    try:
+        if request.content_length and request.content_length > MAX_REQUEST_SIZE:
+            logger.warning(f"Request too large: {request.content_length} bytes")
+            return jsonify({"error": "Request too large", "max_size": MAX_REQUEST_SIZE, "your_size": request.content_length}), 413
+    except Exception as e:
+        logger.error(f"Error checking request size: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.errorhandler(404)
+def not_found_error(error)
+    """Обработчик для 404 ошибки"""
+    logger.warning(f"404 error: {request.url}")
+    return jsonify({"error": "Endpoint not found", "avaliable_endpoints": ["/", "/temperature", "/set_target_temperature", "/air_conditioner"]}), 404
+
+@app.errorhandler(500)
+def internal_error(error)
+    """Обработчик для 500 ошибки"""
+    logger.warning(f"500 error: {error}")
+    return jsonify({"error": "Internal server error", "message": "Something went wrong on the server"}), 500
 
 @app.route('/temperature', methods=['GET'])
 @limiter.limit("10 per minute")
 def get_temperature():
-    """Возвращает текущую температуру."""
-    return jsonify({"temperature": current_temperature})
+    """Возвращает текущую температуру с обработкой."""
+    try:
+        with temperature_lock:
+            temp = current_temperature
+        
+        return jsonify ({"temperature": temp, "unit": "celsius", "timestamp": time.time(), "status": "success"})
+    except Exception as e:
+        logger.error(f"Error getting temperature: {e}")
+        return jsonify({"error": "Could not retrive temperature", "status": "error"}), 500
 
 @app.route('/set_target_temperature', methods=['POST'])
 @limiter.limit("5 per minute")
