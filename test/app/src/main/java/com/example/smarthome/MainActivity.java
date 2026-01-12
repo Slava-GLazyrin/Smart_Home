@@ -2,15 +2,24 @@ package com.example.test;
 
 import android.os.Bundle;
 import android.view.View;
+
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+
 import android.widget.Button;
+import android.widget.Switch;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
+
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
@@ -84,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+        
 
     }
 
@@ -162,6 +172,86 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
                 Toast.makeText(MainActivity.this, "Ошибка соединения", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager = 
+            (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        
+        if (connectivityManager != null) {
+            NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+            return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+        }
+        return false;
+    }
+    
+    private void fetchCurrentTemperature() {
+        if (!isNetworkAvailable()) {
+            showError("No internet connection");
+            tvStatus.setText("Error: No internet connection");
+            return;
+        }
+        
+        showStatus("Fetching temperature...");
+        
+        Call<TemperatureResponse> call = TemperatureService.getApiService().getCurrentTemperature();
+        call.enqueue(new Callback<TemperatureResponse>() {
+            @Override
+            public void onResponse(Call<TemperatureResponse> call, Response<TemperatureResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    TemperatureResponse tempResponse = response.body();
+                    if (tempResponse != null && tempResponse.getTemperature() != null) {
+                        int temp = tempResponse.getTemperature();
+                        tvCurrentTemp.setText(temp + "°C");
+                        showStatus("Temperature updated: " + temp + "°C");
+                    } else {
+                        showError("Invalid response from server");
+                    }
+                } else {
+                    showError("Server error: " + response.code());
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<TemperatureResponse> call, Throwable t) {
+                showError("Network error: " + t.getMessage());
+            }
+        });
+    }
+    
+    private void setTargetTemperature(int temperature) {
+        if (!isNetworkAvailable()) {
+            showError("No internet connection");
+            return;
+        }
+        
+        showStatus("Setting target temperature...");
+        
+        TargetTemperatureRequest request = new TargetTemperatureRequest(temperature);
+        Call<ApiResponse> call = TemperatureService.getApiService().setTargetTemperature(request);
+        
+        call.enqueue(new Callback<ApiResponse>() {
+            @Override
+            public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    ApiResponse apiResponse = response.body();
+                    if ("success".equals(apiResponse.getStatus())) {
+                        showStatus(apiResponse.getMessage());
+                        Toast.makeText(MainActivity.this, 
+                            "Target set to " + temperature + "°C", 
+                            Toast.LENGTH_SHORT).show();
+                    } else {
+                        showError("Server returned error: " + apiResponse.getMessage());
+                    }
+                } else {
+                    showError("Failed to set temperature: " + response.code());
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse> call, Throwable t) {
+                showError("Network error: " + t.getMessage());
             }
         });
     }
