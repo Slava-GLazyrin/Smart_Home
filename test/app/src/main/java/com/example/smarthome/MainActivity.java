@@ -39,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private int currentTemperature = Constants.DEFAULT_TEMPERATURE;
     private int targetTemperature = Constants.DEFAULT_TEMPERATURE;
     
+    private TemperatureViewModel viewModel;
     private TemperatureService temperatureService;
     private Call<TemperatureResponse> currentCall;
     private Call<ApiResponse> targetTempCall;
@@ -48,6 +49,34 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        viewModel = new ViewModelProvider(this).get(TemperatureViewModel.class);
+
+        viewModel.getCurrentTemperature().observe(this, temperature -> {
+            if (temperature != null) {
+                tvCurrentTemp.setText(temperature + "°C");
+            }
+        });
+        
+        viewModel.getTargetTemperature().observe(this, temperature -> {
+            if (temperature != null) {
+                tvTargetTemp.setText(temperature + "°C");
+                sbTargetTemp.setProgress(temperature - 16);
+            }
+        });
+        
+        viewModel.getAirConditionerState().observe(this, state -> {
+            if (state != null) {
+                switchAC.setChecked(state);
+                tvACStatus.setText(state ? "Status: ON" : "Status: OFF");
+            }
+        });
+        
+        viewModel.getStatusMessage().observe(this, message -> {
+            if (message != null) {
+                tvStatus.setText(message);
+            }
+        });
+
 
         // Инициализация всех View элементов
         progressBar = findViewById(R.id.progressBar);
