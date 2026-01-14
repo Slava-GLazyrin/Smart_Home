@@ -7,15 +7,20 @@ import retrofit2.http.POST;
 
 // Интерфейс TemperatureService для общения с API
 public interface TemperatureService {
-
-    @GET("/temperature")
+    
+    // Константы для эндпоинтов (можно вынести в Constants.java)
+    String ENDPOINT_TEMPERATURE = "/temperature";
+    String ENDPOINT_SET_TARGET = "/set_target_temperature";
+    String ENDPOINT_AIR_CONDITIONER = "/air_conditioner";
+    
+    @GET(ENDPOINT_TEMPERATURE)
     Call<TemperatureResponse> getTemperature();
-
-    @POST("/set_target_temperature")
-    Call<Void> setTargetTemperature(@Body TargetTemperatureRequest request);
-
-    @POST("/air_conditioner")
-    Call<Void> toggleAirConditioner(@Body AirConditionerRequest request);
+    
+    @POST(ENDPOINT_SET_TARGET)
+    Call<ApiResponse> setTargetTemperature(@Body TargetTemperatureRequest request);
+    
+    @POST(ENDPOINT_AIR_CONDITIONER)
+    Call<ApiResponse> toggleAirConditioner(@Body AirConditionerRequest request);
 }
 
 

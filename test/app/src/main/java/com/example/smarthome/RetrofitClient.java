@@ -3,9 +3,14 @@ package com.example.test;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
+
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
+
+import java.util.concurrent.TimeUnit;
+import java.io.IOException;
 
 public class RetrofitClient {
     private static Retrofit retrofit = null;
@@ -14,7 +19,7 @@ public class RetrofitClient {
         if (retrofit == null) {
             // Логирование запросов и ответов
             HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
-            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+            loggingInterceptor.setLevel(Constants.LOG_LEVEL);
 
             // Добавляем Interceptor для проверки размера запроса
             Interceptor requestSizeInterceptor = chain -> {
@@ -26,8 +31,13 @@ public class RetrofitClient {
                     request.body().writeTo(buffer);
                     long requestSize = buffer.size();
 
-                    if (requestSize > MAX_REQUEST_SIZE) {
-                        throw new IllegalArgumentException("Размер запроса превышает допустимый предел: " + MAX_REQUEST_SIZE + " байт");
+                    if (requestSize > Constants.MAX_REQUEST_SIZE) {
+                        throw new IOException(Constants.ERROR_MSG_REQUEST_TOO_LARGE + 
+                                Constants.MAX_REQUEST_SIZE + " байт"
+                        );
+                    }
+                }catch (IOException e) {
+                        throw new IOException("Failed to check request size: " + e.getMessage());
                     }
                 }
 
@@ -39,8 +49,9 @@ public class RetrofitClient {
                     .addInterceptor(chain -> {
                         Request originalRequest = chain.request();
                         Request requestWithHeaders = originalRequest.newBuilder()
-                                .addHeader("Accept", "application/json") // Указываем тип контента
-                                .build();
+                                .addHeader("Accept", Constants.HEADER_ACCEPT) // Указываем тип контента
+                                .addHeader("Content-Type", Constants.HEADER_CONTENT_TYPE);
+                                .Request requestWithHeaders = requestBuilder.build();
                         return chain.proceed(requestWithHeaders);
                     })
                     .addInterceptor(requestSizeInterceptor) // Проверка размера запроса
@@ -55,6 +66,25 @@ public class RetrofitClient {
                     .build();
         }
         return retrofit;
+    }
+     //Валидация и нормализация URL
+     
+    private static String validateBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.trim().isEmpty()) {
+            // Используем URL по умолчанию из констант
+            return Constants.BASE_URL;
+        }
+        
+        // Убедимся, что URL заканчивается на "/"
+        if (!baseUrl.endsWith("/")) {
+            baseUrl += "/";
+        }
+        
+        return baseUrl;
+    }
+    //Метод для получения сервиса напрямую (удобный shortcut)
+    public static TemperatureService getTemperatureService() {
+        return getClient(Constants.BASE_URL).create(TemperatureService.class);
     }
 }
 
