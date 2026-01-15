@@ -58,7 +58,7 @@ def update_temperature():
     """Фоновое обновление температуры."""
     global current_temperature, target_temperature, air_conditioner_on
     while True:
-        with True:
+        with temperature_lock:
             if air_conditioner_on:
                 if current_temperature < target_temperature:
                     current_temperature += 1
@@ -125,7 +125,7 @@ def set_target_temperature():
         return jsonify({"error": f"Invalid input: {e.message}"}), 400
 
     with temperature_lock:
-        target_temperature = data["target_tamperture"]
+        target_temperature = data["target_temperture"]
 
     logger.info(f"Target temperature set to: {target_temperature}°C")
     return jsonify({"status": "success", "target_temperature": target_temperature, "message": f"Target temperature set to {target_temperature}°C"})
