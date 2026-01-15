@@ -70,7 +70,12 @@ def update_temperature():
             # Ограничение диапазона
             current_temperature = max(16, min(40, current_temperature))
 
-        logger.info(f"Обновленная температура: {current_temperature}°C (Целевая температура: {target_temperature}°C Кондиционер: {'ВКЛ' if air_conditioner_on else 'ВЫКЛ'})")
+            # Запоминаем значения для логирования
+            temp_log = current_temperature
+            target_log = target_temperature
+            ac_log = air_conditioner_on
+
+        logger.info(f"Обновленная температура: {temp_log}°C (Целевая: {target_log}°C Кондиционер: {'ВКЛ' if ac_log else 'ВЫКЛ'})")
         time.sleep(5)
 
 @app.before_request
@@ -87,13 +92,13 @@ def limit_request_size():
         return jsonify({"error": "Internal server error"}), 500
 
 @app.errorhandler(404)
-def not_found_error(error)
+def not_found_error(error):
     """Обработчик для 404 ошибки"""
     logger.warning(f"404 error: {request.url}")
     return jsonify({"error": "Endpoint not found", "avaliable_endpoints": ["/", "/temperature", "/set_target_temperature", "/air_conditioner"]}), 404
 
 @app.errorhandler(500)
-def internal_error(error)
+def internal_error(error):
     """Обработчик для 500 ошибки"""
     logger.warning(f"500 error: {error}")
     return jsonify({"error": "Internal server error", "message": "Something went wrong on the server"}), 500
@@ -125,7 +130,7 @@ def set_target_temperature():
         return jsonify({"error": f"Invalid input: {e.message}"}), 400
 
     with temperature_lock:
-        target_temperature = data["target_temperture"]
+        target_temperature = data["target_temperature"]
 
     logger.info(f"Target temperature set to: {target_temperature}°C")
     return jsonify({"status": "success", "target_temperature": target_temperature, "message": f"Target temperature set to {target_temperature}°C"})
